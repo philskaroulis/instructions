@@ -42,7 +42,7 @@ app/node_modules
 $ md api
 $ cd api
 $ npm init -y
-$ npm i express
+$ npm i express cors
 $ npm i -D nodemon dotenv
 ```
 
@@ -65,7 +65,7 @@ At this point you are ready to code, commit and push to your repo's `origin`.
 
 <!-- =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -->
 &nbsp;  
-## Configure the Hello World datasource
+## Create the datasource
 
 We will create a collection that holds a document with the object:
 ```json
@@ -84,13 +84,18 @@ Follow these steps:
 1. For rules, click on `Start in test mode`
 1. Select your closest location (like `us-east4`)
 1. Click on `Start collection`
-1. Enter `hello-world` and click `Next`
+1. Enter `MyName` and click `Next`
 1. For document id click on `Auto-Id`
 1. Create a field titled `firstName` as `string` and give it a value
 1. Create a field titled `lastName` as `string` and give it a value
 1. Click on `Save`
 
 You have just created your hello world collection.
+
+
+<!-- =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -->
+&nbsp;  
+## Configure the datasource
 
 Now let's capture some config settings for our project.
 
@@ -119,7 +124,7 @@ Now let's capture some config settings for our project.
 */
 ```
 
-1. Under that comment block, start forming your `.env` constants. Prepend each setting with `FIREBASE_` and uppercase the setting name , like so:
+8. Under that comment block, start forming your `.env` constants. Prepend each setting with `FIREBASE_` and uppercase the setting name , like so:
 ```bash
 FIREBASE_TYPE="..."
 FIREBASE_PROJECT_ID="..."
@@ -133,12 +138,18 @@ FIREBASE_AUTH_PROVIDER_X509_CERT_URL="..."
 FIREBASE_CLIENT_X509_CERT_URL="..."
 ```
 
-Now you have a `.env` file with the firebase config settings. These need to be kept secret, so let's make sure we don't check in them into the repo. Add `app/.env` in your `.gitignore`
+Now you have a `.env` file with the firebase config settings. 
 
-1. In your editor, create a new file in `./api` titled `datasource.js`
-1. Add the following:
+These need to be kept secret, so let's make sure we don't check in them into the repo. Add `app/.env` in your `.gitignore`
+
+Now let's install the firebase admin to your api 
+```bash
+$ npm i firebase-admin
+```
+
+In your editor, create a new file in `./api` titled `datasource.js`.
+Add the following:
 ```js
-
 const { initializeApp, cert } = require('firebase-admin/app')
 const { getFirestore } = require('firebase-admin/firestore')
 
@@ -159,13 +170,24 @@ initializeApp({
   credential: cert(serviceAccount),
 })
 
-export const db = getFirestore()
+const db = getFirestore()
+
+module.exports = db
 ```
+
+Let's make sure that, when the express server starts, it reads the `.env` file and copies the settings into `process.env`, like so:
+```js
+// read .env only in dev
+if (process?.env?.NODE_ENV !== "production") {
+  require("dotenv").config({ path: __dirname + '/.env' })
+}
+```   
+**NOTE:** Execute the `dotenv.config()` ONLY IN DEV. In production, those settings will be declared on the platform and automatically copied into `process.env`.
 
 
 <!-- =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -->
 &nbsp;  
-## Develop & deploy the Hello World API
+## Add a Hello World endpoint
 
 We will create a `/hello-world` endpoint that queries the collection and returns the object
 ```json
@@ -181,8 +203,11 @@ Follow these steps:
 2. Copy the [Express Hello world example](https://expressjs.com/en/starter/hello-world.html) into your `/api/index.js`
 ```js
 const express = require('express')
+const cors = require('cors')
 const app = express()
-const port = 3000
+const port = 5000
+
+app.use(cors())
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
@@ -206,48 +231,66 @@ $ cd ./api
 $ npm run start:dev
 ```
 
-5. In your browser, go to `http://localhost:3000/` and your API should respond with a `Hello World`  
+5. In your browser, go to `http://localhost:5000/` and your API should respond with a `Hello World`  
 
-1. Install the firebase admin to your api 
-```bash
-$ npm i firebase-admin
+Now let's make the call to the datasource:
+```js
+
+app.get('/hello-world', (req, res) => {
+  const { id } = req.query
+
+  if (!id) {
+    const msg = "Bad Request: Missing id."
+    console.error(msg)
+    res.status(400).json({error: msg})
+    return
+  }
+
+  const db = require("./datasource")
+
+  const docRef = db.collection("MyName").doc(id)
+
+  docRef.get()
+    .then((doc) => {
+      if (doc.exists) {
+        const { firstName, lastName } = doc.data()
+        res.status(200).send(`Hello. My name is ${firstName} ${lastName}.`)
+      } else {
+        console.error("id not found")
+        res.status(401).json(result)
+      }
+    })
+    .catch((error) => {
+      console.error(error)
+      res.status(401).json(result)
+    })
+
+})
+```
+In your Firestore, copy the document id that holds your name.
+
+In your browser, go to `http://localhost:5000?id=PASTE-DOC-ID` and your API should respond with a `Hello. My name is...`  
+
+Last step: respond with a json object instead of a string:
+```js
+        res.status(200).send({ firstName, lastName })
 ```
 
-7. Generate the secrets
-
-1. turn them into constants in a .env
-1. Add `api/.env` in your `./.gitignore` 
-1. Create your API's datasource config file: `/api/datasource.js`
-1. Add the following into your datasource config file
-```js
-const { initializeApp } = require('firebase-admin/app');
-
-const serviceAccount = {
-... do this
-}
-
-initializeApp({
-  credential: cert(serviceAccount)
-});
-
-export const db = getFirestore();
-```
-
-10. Call the `dotenv` config ONLY IN PROD.
-```js
-// read .env only in dev
-if (process?.env?.NODE_ENV !== "production") {
-  require("dotenv").config();
-}
-```   
-
+<!-- =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -->
 &nbsp;  
-## Develop & deploy the Hello World App
+## Call Hello World endpoint from the front-end
 
-We will create a page that executes a GET request to our `/hello-world` endpoint and displays:
-```
-Hello World. My name is {firstName} {lastName}
-```
+
+
+
+
+
+
+
+<!-- =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- -->
+&nbsp;  
+## Deploy the Hello World App
+
 
 <!--
 
