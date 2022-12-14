@@ -140,7 +140,7 @@ FIREBASE_CLIENT_X509_CERT_URL="..."
 
 Now you have a `.env` file with the firebase config settings. 
 
-These need to be kept secret, so let's make sure we don't check in them into the repo. Add `app/.env` in your `.gitignore`
+**NOTE:** These need to be kept secret, so let's make sure we don't check in them into the repo. Add `app/.env` in your `.gitignore`
 
 Now let's install the firebase admin to your api 
 ```bash
@@ -405,7 +405,7 @@ In your Github repo got to `Settings` then `Pages`.
 
 Make sure `Source` is set to `Deploy from a branch`.
 
-Set `Branch` to your `Main` and click `Save`.
+Set `Branch` to your `main` and click `Save`.
 
 Now add a `homepage` property to your `package.json`.
 ```json
@@ -431,18 +431,11 @@ In your editor, create a new file in `./app` titled `.env.production` and add th
 REACT_APP_API_ENDPOINT=https://username-appname.herokuapp.com/
 ```
 
+Let's deploy the app:
+```bash
+$ npm run deploy
+```
 
+Now go back and set `Branch` to your `gh-pages` and click `Save`.
 
-<!--
-
-
-$ npm i express body-parser firebase cors jsonwebtoken
-
-1. Click on Authentication and `Get Started`
-1. Click on Email/Password
-1. Enable & save
-
-You have just created your authentication source and your hello world collection.
-
-
--->
+**NOTE:** Give github 15-30 minutes to index your website.
